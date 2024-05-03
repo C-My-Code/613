@@ -1,7 +1,4 @@
 #include "img_lib.cuh"
-#include <iostream>
-#include <fstream>
-
 #include <time.h>
 
 using namespace std; 
@@ -42,6 +39,7 @@ int main(int argc, const char * argv[]){
 
         int num_runs = 0;
         double contrast_time = 0;
+        double naive_time = 0;
         double gauss_time = 0;
         double flip_v_time = 0;
         double flip_h_time = 0;
@@ -136,6 +134,14 @@ int main(int argc, const char * argv[]){
             CUDA_CALL(cudaEventElapsedTime(&gpu_ms, start, stop));
             laplacian_time += gpu_ms;
 
+            CUDA_CALL(cudaEventRecord(start));
+            naive_gauss_blur_kernel<<<numBlocks, numThreadsPerBlock>>>(in_dev, out_dev, size_n, size_n);
+            CUDA_CALL(cudaEventRecord(stop));
+            CUDA_CALL(cudaEventSynchronize(stop));
+            gpu_ms = 0;
+            CUDA_CALL(cudaEventElapsedTime(&gpu_ms, start, stop));
+            naive_time += gpu_ms;
+
             CUDA_CALL(cudaEventDestroy(start));
             CUDA_CALL(cudaEventDestroy(stop));
 
@@ -145,6 +151,7 @@ int main(int argc, const char * argv[]){
         printf("----------\n");
         printf("Image Size: %d x %d\n", size_n, size_n);
         printf("Contrast Stretch Avg Time: %lfms\n", (double)(contrast_time/num_runs));
+        printf("Naive Gaussian Blur Avg Time: %lfms\n", (double)(naive_time/num_runs));
         printf("Gaussian Blur Avg Time: %lfms\n", (double)(gauss_time/num_runs));
         printf("Flip Horizontal Avg Time: %lfms\n", (double)(flip_h_time/runs_n));
         printf("Flip Vertical Avg Time: %lfms\n", (double)(flip_v_time/runs_n));
@@ -156,8 +163,9 @@ int main(int argc, const char * argv[]){
 
 
 
-        file_out<<(double)(contrast_time/runs_n)<<","<<(double)(gauss_time/runs_n)<<","<<(double)(flip_h_time/runs_n)<<","<<(double)(flip_v_time/runs_n)<<
+        file_out<<(double)(contrast_time/runs_n)<<","<<(double)(naive_time/runs_n)<<","<<(double)(gauss_time/runs_n)<<","<<(double)(flip_h_time/runs_n)<<","<<(double)(flip_v_time/runs_n)<<
         (double)(rotate_c_time/runs_n)<<","<<(double)(rotate_cc_time/runs_n)<<","<<(double)(sobel_time/runs_n)<<","<<(double)(laplacian_time/runs_n)<<std::endl;
+
 
         cudaFree(in_dev);
         cudaFree(out_dev);
