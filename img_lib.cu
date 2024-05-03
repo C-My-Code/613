@@ -1,4 +1,15 @@
-#include <img_lib.cuh>
+#include "img_lib.cuh"
+
+
+__global__ void rgb2grey_kernel(uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* grey, unsigned int height, unsigned int width){
+    unsigned int pixel_count = height * width;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
+    for(int i=(row*(gridDim.x * blockDim.x))*z+col;i<pixel_count;i += (gridDim.y * blockDim.y) +( gridDim.x * blockDim.x)+ ( gridDim.z * blockDim.z)){
+        grey[i] = (uint8_t)(blue[i]*.10) + (uint8_t)(green[i]*.6) + (uint8_t)(red[i]*.3);
+    }
+}
 
 __global__ void contrast_kernel(uint8_t *img, uint8_t *c_img, unsigned int width, unsigned int height)
 {
@@ -275,4 +286,96 @@ __global__ void sobel_filter_kernel(uint8_t *img, uint8_t *det_img,unsigned int 
         }
     }
 
+}
+
+__global__ void naive_gauss_blur_kernel(uint8_t* img, uint8_t* blur_img, unsigned int width, unsigned int height){
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    __shared__ float shared_kernel[BLUR_SIZE*BLUR_SIZE];
+
+    __shared__ float sum;
+    if(threadIdx.x == 0 && threadIdx.y == 0){
+        sum = 0;
+    }
+     __syncthreads();
+
+    //Calculating 2D gaussian filter and storing it in shared memory
+    if(row < height  && col < width){
+        if(threadIdx.y < BLUR_SIZE && threadIdx.x < BLUR_SIZE){
+            double x = threadIdx.y - ((float)BLUR_SIZE - 1) / 2.0;
+            double y = threadIdx.x - ((float)BLUR_SIZE - 1) / 2.0;
+            shared_kernel[threadIdx.y*BLUR_SIZE + threadIdx.x] = 1 * exp(((pow(x, 2) + pow(y, 2)) / ((2 * pow(1, 2)))) * (-1));   
+        }
+    }
+    __syncthreads();
+
+    //Atomically adding each value to sum for nomalization
+    if(threadIdx.y < BLUR_SIZE && threadIdx.x < BLUR_SIZE){
+        atomicAdd(&sum,shared_kernel[threadIdx.y*BLUR_SIZE + threadIdx.x]);
+    }
+    __syncthreads();
+
+    //Normalizing the kernel
+    if(threadIdx.y < BLUR_SIZE && threadIdx.x < BLUR_SIZE){
+        shared_kernel[threadIdx.y*BLUR_SIZE + threadIdx.x] /= sum;
+    }
+
+    if(row < height  && col < width){
+        int sum = 0;
+        for(int in_row = row-BLUR_SIZE; in_row<row+BLUR_SIZE+1;in_row++){
+            for(int in_col = col-BLUR_SIZE; in_col<col+BLUR_SIZE+1;in_col++){
+                if(in_row >=0 && in_row < height && in_col >= 0 && in_col <width){
+                    sum += img[(in_row*width)+in_col]*shared_kernel[((in_row*width)%BLUR_SIZE)+(in_col%BLUR_SIZE)];    
+                }
+            }
+        }
+        blur_img[(row*width)+col] = (uint8_t)(sum/((2*BLUR_SIZE+1)*(2*BLUR_SIZE+1)));
+    }
+}
+
+__host__ void load_image_bin(const char* filename, uint8_t *b_dest, uint8_t *g_dest, uint8_t *r_dest, unsigned int img_height, unsigned int img_width){
+    // Opening binary file containing image
+    FILE *file = fopen(filename, "rb");
+
+    // Sorting binary by bgr values and storing them in the corresponding buffer
+    for (int i = 0; i < img_height; i++)
+    {
+        for (int j = 0; j < img_width; j++)
+        {
+            for (int k = 0; k < 3; k++)
+            {
+                char buf;
+                switch (k)
+                {
+                case 0:
+                    fread(&buf, 1, 1, file);
+                    b_dest[(i * img_width) + j] = (uint8_t)buf;
+                case 1:
+                    fread(&buf, 1, 1, file);
+                    g_dest[(i * img_width) + j] = (uint8_t)buf;
+                case 2:
+                    fread(&buf, 1, 1, file);
+                    r_dest[(i * img_width) + j] = (uint8_t)buf;
+                default:
+                    NULL;
+                }
+            }
+        }
+    }
+    // Closing binary file containing image
+    fclose(file);
+}
+
+__host__ void write_image_bin(const char* filename, uint8_t *source, unsigned int img_height, unsigned int img_width){
+    std::ofstream file_out;
+    file_out.open(filename, std::ios::binary | std::ios::out);
+    for (int i = 0; i < ((img_height*img_width)/3); i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            file_out << source[i] << source[i] << source[i];
+        }
+    }
+    file_out.close();
 }
