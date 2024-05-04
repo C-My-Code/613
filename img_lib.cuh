@@ -31,7 +31,7 @@
 *   unsigned int height - Height of input image
 *   unsigned int wdith  - Height of input image
 */
-__global__ void rgb2grey_kernel(uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* grey, unsigned int height, unsigned int width);
+__global__ void rgb2grey_kernel(uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* grey, unsigned int width, unsigned int height);
 
 /*contrast_kernel -- Contrast Stretching
 *   uint8_t *img        - pointer greyscale input image array of bytes - single channel
@@ -60,7 +60,7 @@ __global__ void flip_kernel(uint8_t* img, uint8_t* flip_img, unsigned int width,
 
 /*rotate_kernel -- Image Rotate
 *   uint8_t *img        - pointer greyscale input image array of bytes - single channel
-*   uint8_t *rot_img    - pointer for output image - single channel
+*   uint8_t *rot_img   - pointer for output image - single channel
 *   unsigned int width  - Width of input image
 *   unsigned int height - Height of input image
 *   unsigned int d_flag - Rotate direction flag - CLOCK_WISE or CCLOCK_WISE
@@ -69,7 +69,7 @@ __global__ void rotate_kernel(uint8_t* img, uint8_t* rot_img, unsigned int width
 
 /*laplacian_filter_kernel -- Edge Detection - Laplacian
 *   uint8_t *img        - pointer greyscale input image array of bytes - single channel
-*   uint8_t *det_img    - pointer for output image - single channel
+*   uint8_t *det_img   - pointer for output image - single channel
 *   unsigned int width  - Width of input image
 *   unsigned int height - Height of input image
 */
@@ -77,7 +77,7 @@ __global__ void laplacian_filter_kernel(uint8_t *img, uint8_t *det_img,unsigned 
 
 /*sobel_filter_kernel -- Edge Detection - Sobel
 *   uint8_t *img        - pointer greyscale input image array of bytes - single channel
-*   uint8_t *det_img    - pointer for output image - single channel
+*   uint8_t *det_img   - pointer for output image - single channel
 *   unsigned int width  - Width of input image
 *   unsigned int height - Height of input image
 */
@@ -103,8 +103,8 @@ __host__ void load_image_bin(const char* filename, uint8_t *b_dest, uint8_t *g_d
 
 /*write_image_bin -- Write Image Binary
 *   const char* filename    - Name of binary image file
-*   uint8_t *source         - Pointer to output buffer - single channel - assumes you have sungle channel greyscale
-*   unsigned int width      - Width of output image
-*   unsigned int height     - Height of output image
+*   uint8_t *source    - Pointer to output buffer - single channel - assumes you have sungle channel greyscale
+*   unsigned int width  - Width of output image
+*   unsigned int height - Height of output image
 */
 __host__ void write_image_bin(const char* filename, uint8_t *source, unsigned int img_height, unsigned int img_width);
