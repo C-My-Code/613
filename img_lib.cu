@@ -1,12 +1,10 @@
 #include "img_lib.cuh"
 
 
-__global__ void rgb2grey_kernel(uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* grey, unsigned int height, unsigned int width){
-    unsigned int pixel_count = height * width;
+__global__ void rgb2grey_kernel(uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* grey, unsigned int width, unsigned int height){
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
-    for(int i=(row*(gridDim.x * blockDim.x))*z+col;i<pixel_count;i += (gridDim.y * blockDim.y) +( gridDim.x * blockDim.x)+ ( gridDim.z * blockDim.z)){
+    for(int i=((row*width)+col);i<width*height;i+=(gridDim.x*blockDim.x)*(gridDim.y*blockDim.y)){
         grey[i] = (uint8_t)(blue[i]*.10) + (uint8_t)(green[i]*.6) + (uint8_t)(red[i]*.3);
     }
 }
@@ -21,10 +19,10 @@ __global__ void contrast_kernel(uint8_t *img, uint8_t *c_img, unsigned int width
     __shared__ uint8_t min;
     __shared__ uint8_t max;
    if(bid == 0){
-       min = (uint8_t)atomicMin((unsigned int *)img,255);
+       min = 0;
    }
    else if(bid == 1){
-       max = (uint8_t)atomicMax((unsigned int *)img,0);
+       max = 255;
    }
    __syncthreads();
 
@@ -335,42 +333,40 @@ __global__ void naive_gauss_blur_kernel(uint8_t* img, uint8_t* blur_img, unsigne
 }
 
 __host__ void load_image_bin(const char* filename, uint8_t *b_dest, uint8_t *g_dest, uint8_t *r_dest, unsigned int img_height, unsigned int img_width){
-    // Opening binary file containing image
+    //Opening binary file containing image
     FILE *file = fopen(filename, "rb");
-
-    // Sorting binary by bgr values and storing them in the corresponding buffer
-    for (int i = 0; i < img_height; i++)
-    {
-        for (int j = 0; j < img_width; j++)
-        {
-            for (int k = 0; k < 3; k++)
-            {
+    
+    //Sorting binary by bgr values and storing them in the corresponding buffer
+    for(int i=0;i<img_height;i++){
+        for(int j=0;j<img_width;j++){
+            for(int k=0;k<3;k++){
                 char buf;
-                switch (k)
+                switch(k)
                 {
                 case 0:
                     fread(&buf, 1, 1, file);
-                    b_dest[(i * img_width) + j] = (uint8_t)buf;
+                    b_dest[(i*img_width)+j] = (uint8_t)buf;
                 case 1:
-                    fread(&buf, 1, 1, file);
-                    g_dest[(i * img_width) + j] = (uint8_t)buf;
+                    fread(&buf, 1, 1, file); //Just to increment file pointer
+                    g_dest[(i*img_width)+j] = (uint8_t)buf;
                 case 2:
-                    fread(&buf, 1, 1, file);
-                    r_dest[(i * img_width) + j] = (uint8_t)buf;
+                    fread(&buf, 1, 1, file); //Just to increment file pointer
+                    r_dest[(i*img_width)+j] = (uint8_t)buf;
                 default:
                     NULL;
                 }
+                
             }
         }
     }
-    // Closing binary file containing image
+    //Closing binary file containing image
     fclose(file);
 }
 
 __host__ void write_image_bin(const char* filename, uint8_t *source, unsigned int img_height, unsigned int img_width){
     std::ofstream file_out;
     file_out.open(filename, std::ios::binary | std::ios::out);
-    for (int i = 0; i < ((img_height*img_width)/3); i++)
+    for (int i = 0; i < ((img_height*img_width)); i++)
     {
         for (int j = 0; j < 2; j++)
         {
