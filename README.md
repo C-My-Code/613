@@ -7,5 +7,8 @@ retreive two 800x800 images. Also, note the filname the script is looking for "i
 
 3. Parameters for each GPU libary function are noted in the header file img_lib.cuh
 
-5. To use the performance test example build with peft_test.cu and call your output file with the number of times each function should execute each image size for average performance capture.
+4. To use the performance test example build with peft_test.cu and call your output file with the number of times each function should execute each image size for average performance capture.
 For example: "./perf_test 50" to process each image size 50 times
+
+5. An image processing test image_test.cu that runs an image through each kernel(except only one edge detection is used, you can switch between them if you would like) provided and handles all calling of python scripts for data and image conversion. Running the program will initate prompts for image file name and dimensions. Once process the program will output the binary files as well as a converted image titled processed0.jpg. 
+
